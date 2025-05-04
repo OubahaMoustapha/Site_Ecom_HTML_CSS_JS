@@ -7,5 +7,12 @@ function open_cat_list(){
 var swiper = new Swiper(".mySwiper", {
     pagination: {
         el: ".swiper-pagination",
+        dynamicBullests:true,
+        clickable:true
     },
-});
+    autoplay:{
+        delay:2500,
+      },
+      loop:true,
+    });
+    swiper()
