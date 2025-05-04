@@ -100,6 +100,7 @@ header {
     left: 0;
     right: 0;
     box-shadow: 5px 8px 8px #949ca33b;
+    z-index: 1000;
 }
 
 /*start top header*/
@@ -391,3 +392,200 @@ header .bottom_header .nav_links li.active a {
     height: 100%;
     background: transparent;
 }
+/* End banners_4  */
+
+/* Start top_slide_products  */
+
+.slide {
+    margin-bottom: 70px;
+}
+.top_slide {
+    position: relative;
+    margin-bottom: 20px;
+    border-bottom: 3px var(--main_color) solid;
+}
+.top_slide h2 {
+    position: relative;
+    text-transform: uppercase;
+    background:var(--main_color);
+    color: var(--white_color);
+    font-size: 18px;
+    padding: 10px 40px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: max-content;
+}
+.top_slide h2::before {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    top: 0;
+    z-index: 9;
+    border-left: 20px transparent solid;
+    background: #fff;
+    left: 0;
+    border-bottom: 20px rgb(62, 116, 232) solid;
+}
+.top_slide h2 i {
+    color: var(--white_color);
+}
+.slide .container {
+    position: relative;
+}
+.slide .container .mySwiper {
+    padding: 10px;
+}
+.slide .container .mySwiper .btn_swip {
+    position: absolute;
+    top: 30px;
+    right: 0;
+    background: rgba(149, 197, 239, 0.813);
+    color: var(--main_color);
+    font-weight: bold;
+    border-radius: 5px;
+    height: 35px;
+    width: 35px;
+    border: 1px solid var(--border_color);
+}
+.slide .container .mySwiper .btn_swip::after {
+    font-size: 12px;
+}
+.slide .container .mySwiper .btn_swip.swiper-button-prev {
+    left: calc(100% - 80px);
+}
+/* End top_slide_products  */
+
+
+/* Start product_cart style  */
+.mySwiper {
+    overflow: hidden;
+}
+.product {
+    background: #fff;
+    padding: 20px 20px;
+    box-shadow: 5px 5px 10px #94949428;
+    border: 1px var(--border_color) solid;
+    border-radius: 5px;
+    position: relative;
+}
+
+.product .sale_present {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-weight: bold;
+    z-index: 2;
+    background: #ff1e00;
+    color: var(--white_color);
+    padding: 4px 8px;
+    border-radius: 50%;
+    font-size: 13px;
+}
+
+.product .img_product {
+    position: relative;
+    height: 180 px;
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.3s;
+}
+.product:hover .img_product {
+    scale: 1.1;
+}
+.product .name_product {
+    margin-bottom: 10px;
+    color: var(--color_heading);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+.product .name_product a:hover {
+    color: var(--main_color);
+}
+.stars {
+    margin-bottom: 10px;
+}
+.stars i {
+    color: var(--main_color);
+    font-size: 14px;
+}
+.price {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+.price p {
+    color: var(--main_color);
+    font-weight: bold;
+    font-size: 18px;
+}
+.price .old_price {
+    color: var(--p_color);
+    text-decoration: line-through;
+    font-size: 13px;
+    font-weight: normal;
+}
+.product .icons {
+    display: flex;
+    gap: 10;
+    margin-top: 15px;
+}
+.product .icons .icon_product {
+    width: 40px;
+    height: 40px;
+    border: 1px var(--border_color) solid ;
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.4s;
+}
+
+.product .icons .icon_product:hover {
+    background: var(--main_color);
+}
+.product .icons .icon_product i {
+    font-size: 14px;
+}
+.product .icons .icon_product:hover i {
+    scale: 1.2;
+    color: var(--white_color);
+}
+.product .icons .btn_add_cart {
+    background: var(--main_color);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--white_color);
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: 0.3s;
+    border: 1px var(--main_color) solid;
+}
+.product .icons .btn_add_cart:hover {
+    scale: 1.05;
+    background: rgb(4, 107, 211);
+}
+.product .icons .btn_add_cart i {
+    color: var(--white_color);
+}
+.product .icons .active {
+    color: var(--main_color);
+    background: transparent;
+}
+.product .icons .active i {
+    color: var(--main_color);
+}
+
+
+
+
+
+/* End product_cart style  */
