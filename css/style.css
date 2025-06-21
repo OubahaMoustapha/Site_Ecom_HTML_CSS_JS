@@ -318,7 +318,7 @@ header .bottom_header .nav_links li.active a {
     height: 100%;
     width: 100%;
 }
-.slider .container .slide_swp{
+.slider .container .transp{
     width: 75%;
     overflow: hidden;
 }
@@ -486,7 +486,7 @@ header .bottom_header .nav_links li.active a {
 
 .product .img_product {
     position: relative;
-    height: 180 px;
+    height: 180px;
     padding: 0 20px;
     display: flex;
     align-items: center;
@@ -584,8 +584,19 @@ header .bottom_header .nav_links li.active a {
     color: var(--main_color);
 }
 
-
-
-
-
 /* End product_cart style  */
+/* start banner_4   */
+
+.banners {
+    margin: 50px 0;
+}
+.banners .container .banners_boxs {
+    display: flex;
+    justify-content: space-between;
+}
+.banners .banners_boxs .box {
+    width:49%;
+}
+
+
+/* End banner_4  */
