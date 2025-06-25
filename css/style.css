@@ -598,5 +598,8 @@ header .bottom_header .nav_links li.active a {
     width:49%;
 }
 
+.banners .banners_boxs.banner_3_img .box {
+    width: 31%;
+} 
 
 /* End banner_4  */
