@@ -38,12 +38,6 @@ class CreateProductVariantRequest extends FormRequest
                 'min:0',
             ],
 
-            'stock' => [
-                'required',
-                'integer',
-                'min:0',
-            ],
-
             'barcode' => [
                 'nullable',
                 'string',

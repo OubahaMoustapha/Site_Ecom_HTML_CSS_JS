@@ -1,0 +1,101 @@
+:root {
+  /* SAFE Brand Colors */
+  --color-brand-navy: #0d223a;
+  --color-brand-emerald: #0e7a4a;
+  --color-brand-gold: #c39b53;
+
+  /* SAFE Base Colors */
+  --color-white: #ffffff;
+  --color-surface: #f8f9fa;
+
+  /* Light Theme */
+  --color-background: #ffffff;
+  --color-surface-primary: #ffffff;
+  --color-surface-secondary: #f8f9fa;
+
+  --color-text-primary: #0d223a;
+  --color-text-secondary: #3f4a5a;
+  --color-text-muted: #737d8c;
+
+  --color-border: #e1e5e9;
+
+  --color-success: #15803d;
+  --color-warning: #d97706;
+  --color-error: #dc2626;
+}
+[data-theme="dark"] {
+  --color-background: #0d223a;
+  --color-surface-primary: #172033;
+  --color-surface-secondary: #273142;
+
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #c4cad1;
+  --color-text-muted: #9aa3ae;
+
+  --color-border: #3f4a5a;
+
+  --color-success: #15803d;
+  --color-warning: #d97706;
+  --color-error: #dc2626;
+}
+[data-theme="feminine"] {
+  --color-background: #fffafc;
+  --color-surface-primary: #ffffff;
+  --color-surface-secondary: #f8f1f5;
+
+  --color-text-primary: #2b1f29;
+  --color-text-secondary: #5c4a57;
+  --color-text-muted: #8a7885;
+
+  --color-border: #eadde5;
+
+  --color-success: #15803d;
+  --color-warning: #d97706;
+  --color-error: #dc2626;
+
+  --color-accent: #c39b53;
+}
+[data-theme="masculine"] {
+  --color-background: #f6f8fb;
+  --color-surface-primary: #ffffff;
+  --color-surface-secondary: #edf1f5;
+
+  --color-text-primary: #0d223a;
+  --color-text-secondary: #344255;
+  --color-text-muted: #6b7788;
+
+  --color-border: #d8dee6;
+
+  --color-success: #15803d;
+  --color-warning: #d97706;
+  --color-error: #dc2626;
+
+  --color-accent: #c39b53;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="system"] {
+    --color-background: #0d223a;
+    --color-surface-primary: #172033;
+    --color-surface-secondary: #273142;
+
+    --color-text-primary: #ffffff;
+    --color-text-secondary: #c4cad1;
+    --color-text-muted: #9aa3ae;
+
+    --color-border: #3f4a5a;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-theme="system"] {
+    --color-background: #ffffff;
+    --color-surface-primary: #ffffff;
+    --color-surface-secondary: #f8f9fa;
+
+    --color-text-primary: #0d223a;
+    --color-text-secondary: #3f4a5a;
+    --color-text-muted: #737d8c;
+
+    --color-border: #e1e5e9;
+  }
+}

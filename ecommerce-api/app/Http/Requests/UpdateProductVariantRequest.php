@@ -40,12 +40,6 @@ class UpdateProductVariantRequest extends FormRequest
                 'min:0',
             ],
 
-            'stock' => [
-                'sometimes',
-                'integer',
-                'min:0',
-            ],
-
             'barcode' => [
                 'nullable',
                 'string',
