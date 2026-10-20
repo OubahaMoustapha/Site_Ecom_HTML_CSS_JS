@@ -33,6 +33,10 @@ class ProductVariantResource extends JsonResource
 
             'is_active' => (bool) $this->is_active,
 
+            'stock' => $this->whenLoaded('inventory', function () {
+                return $this->inventory?->quantity ?? 0;
+            }),
+
             'attribute_values' => AttributeValueResource::collection(
                 $this->whenLoaded('attributeValues')
             ),

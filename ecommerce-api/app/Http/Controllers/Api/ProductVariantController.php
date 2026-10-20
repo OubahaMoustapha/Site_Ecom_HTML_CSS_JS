@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CreateProductVariantRequest;
 use App\Http\Requests\UpdateProductVariantRequest;
 use App\Http\Resources\ProductVariantResource;
+use App\Models\OrderItem;
 use App\Models\ProductVariant;
 use Illuminate\Support\Facades\DB;
 
@@ -18,8 +19,13 @@ class ProductVariantController extends Controller
     {
         $variants = ProductVariant::with([
             'product',
+            'inventory',
             'attributeValues.attribute',
         ])
+        ->when(
+            request('product_id'),
+            fn ($query, $productId) => $query->where('product_id', $productId)
+        )
         ->latest()
         ->paginate(10);
 
@@ -67,6 +73,7 @@ class ProductVariantController extends Controller
     {
         $productVariant->load([
             'product',
+            'inventory',
             'attributeValues.attribute',
         ]);
 
@@ -116,6 +123,14 @@ class ProductVariantController extends Controller
      */
     public function destroy(ProductVariant $productVariant)
     {
+        // Deleting would cascade to order items and erase order history.
+        if (OrderItem::where('product_variant_id', $productVariant->id)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Variant has been ordered and cannot be deleted. Deactivate it instead.',
+            ], 409);
+        }
+
         $productVariant->delete();
 
         return response()->json([

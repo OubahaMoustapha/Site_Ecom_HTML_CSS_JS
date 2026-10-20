@@ -38,6 +38,14 @@ class ProductResource extends JsonResource
             'meta_title' => $this->meta_title,
             'meta_description' => $this->meta_description,
 
+            'images' => ProductImageResource::collection(
+                $this->whenLoaded('images')
+            ),
+
+            'variants' => ProductVariantResource::collection(
+                $this->whenLoaded('variants')
+            ),
+
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

@@ -91,10 +91,23 @@ class AuthService
      */
     public function updateProfile(User $user, array $data): User
     {
+        $emailChanged = $user->email !== $data['email'];
+
         $user->update([
             'name' => $data['name'],
             'email' => $data['email'],
         ]);
+
+        // A new email address must be verified again.
+        if ($emailChanged) {
+
+            $user->forceFill([
+                'email_verified_at' => null,
+            ])->save();
+
+            $user->sendEmailVerificationNotification();
+
+        }
 
         return $user->fresh();
     }

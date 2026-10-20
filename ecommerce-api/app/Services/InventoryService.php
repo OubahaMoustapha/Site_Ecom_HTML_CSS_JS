@@ -2,17 +2,20 @@
 
 namespace App\Services;
 
-use App\Models\ProductVariant;
+use App\Models\Inventory;
 use App\Models\StockMovement;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
+use Illuminate\Validation\ValidationException;
 
 class InventoryService
 {
     /**
      * Create a stock movement and update inventory.
      *
-     * @throws RuntimeException
+     * The inventory row is locked for the duration of the transaction
+     * so concurrent movements cannot read a stale quantity.
+     *
+     * @throws ValidationException
      */
     public function createMovement(
         int $productVariantId,
@@ -28,15 +31,16 @@ class InventoryService
             $note
         ) {
 
-            $variant = ProductVariant::with('inventory')
-                ->findOrFail($productVariantId);
-
-            $inventory = $variant->inventory;
+            $inventory = Inventory::where('product_variant_id', $productVariantId)
+                ->lockForUpdate()
+                ->first();
 
             if (!$inventory) {
-                throw new RuntimeException(
-                    'Inventory record not found for this product variant.'
-                );
+                throw ValidationException::withMessages([
+                    'product_variant_id' => [
+                        'Inventory record not found for this product variant.',
+                    ],
+                ]);
             }
 
             $quantityBefore = $inventory->quantity;
@@ -50,7 +54,11 @@ class InventoryService
                 case StockMovement::TYPE_OUT:
 
                     if ($inventory->quantity < $quantity) {
-                        throw new RuntimeException('Insufficient stock.');
+                        throw ValidationException::withMessages([
+                            'quantity' => [
+                                "Insufficient stock. Only {$inventory->quantity} item(s) available.",
+                            ],
+                        ]);
                     }
 
                     $inventory->quantity -= $quantity;
@@ -61,13 +69,15 @@ class InventoryService
                     break;
 
                 default:
-                    throw new RuntimeException('Invalid stock movement type.');
+                    throw ValidationException::withMessages([
+                        'type' => ['Invalid stock movement type.'],
+                    ]);
             }
 
             $inventory->save();
 
             $movement = StockMovement::create([
-                'product_variant_id' => $variant->id,
+                'product_variant_id' => $productVariantId,
                 'type'               => $type,
                 'quantity_before'    => $quantityBefore,
                 'quantity'           => $quantity,

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CreateOrderRequest;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Services\InvoiceService;
@@ -58,18 +59,43 @@ class OrderController extends Controller
     /**
      * Create a new order from cart.
      */
-    public function store(Request $request): JsonResponse
+    public function store(CreateOrderRequest $request): JsonResponse
     {
         /** @var \App\Models\User $user */
         $user = $request->user();
 
-        $order = $this->orderService->createOrder($user);
+        $order = $this->orderService->createOrder(
+            $user,
+            $request->validated()
+        );
 
         return response()->json([
             'success' => true,
             'message' => 'Order created successfully.',
             'data' => new OrderResource($order),
         ], 201);
+    }
+
+    /**
+     * Cancel a pending order and restore its stock.
+     */
+    public function cancel(
+        Request $request,
+        Order $order
+    ): JsonResponse {
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+
+        $order = $this->orderService->cancelOrder(
+            $user,
+            $order
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Order cancelled successfully.',
+            'data' => new OrderResource($order),
+        ]);
     }
 
     /**

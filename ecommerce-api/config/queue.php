@@ -17,6 +17,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Mail Queue Connection
+    |--------------------------------------------------------------------------
+    |
+    | Connection used by queued mail listeners (e.g. the invoice email).
+    | "sync" sends during the request and needs no worker (local default).
+    | "deferred" sends right after the response, also without a worker.
+    | "database" needs a running "php artisan queue:work" (production).
+    |
+    */
+
+    'mail_connection' => env('MAIL_QUEUE_CONNECTION', 'sync'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Queue Connections
     |--------------------------------------------------------------------------
     |

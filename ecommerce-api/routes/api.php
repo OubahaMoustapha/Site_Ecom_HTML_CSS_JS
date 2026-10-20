@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 
+use App\Http\Controllers\Api\AdminOrderController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\BrandController;
@@ -18,52 +19,97 @@ use App\Http\Controllers\Api\PaymentController;
 
 /*
 |--------------------------------------------------------------------------
-| Catalog
+| Catalog (public, read-only)
 |--------------------------------------------------------------------------
 */
 
 // ProductController routes
-Route::apiResource('products', ProductController::class);
+Route::apiResource('products', ProductController::class)->only(['index', 'show']);
 
 // CategoryController routes
-Route::apiResource('categories', CategoryController::class);
+Route::apiResource('categories', CategoryController::class)->only(['index', 'show']);
 
 // BrandController routes
-Route::apiResource('brands', BrandController::class);
+Route::apiResource('brands', BrandController::class)->only(['index', 'show']);
 
 // ProductImageController routes
-Route::post('products/{product}/images', [ProductImageController::class, 'store']);
 Route::get('products/{product}/images', [ProductImageController::class, 'index']);
-Route::delete('products/{product}/images/{productImage}', [ProductImageController::class, 'destroy']);
 
 // AttributeController routes
-Route::apiResource('attributes', AttributeController::class);
+Route::apiResource('attributes', AttributeController::class)->only(['index', 'show']);
 
 // AttributeValueController routes
-Route::apiResource('attribute-values', AttributeValueController::class);
+Route::apiResource('attribute-values', AttributeValueController::class)->only(['index', 'show']);
 
 // ProductVariantController routes
-Route::apiResource('product-variants', ProductVariantController::class);
+Route::apiResource('product-variants', ProductVariantController::class)->only(['index', 'show']);
 
 /*
 |--------------------------------------------------------------------------
-| Inventory
+| Administration (authenticated administrators only)
 |--------------------------------------------------------------------------
 */
 
-// Low Stock
-Route::get('inventories/low-stock', [InventoryController::class, 'lowStock']);
+Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
-// InventoryController routes
-Route::apiResource('inventories', InventoryController::class);
+    /*
+    |--------------------------------------------------------------------------
+    | Catalog management
+    |--------------------------------------------------------------------------
+    */
 
-// StockMovementController routes
-Route::apiResource('stock-movements', StockMovementController::class)
-    ->only([
-        'index',
-        'store',
-        'show',
-    ]);
+    Route::apiResource('products', ProductController::class)->except(['index', 'show']);
+
+    Route::apiResource('categories', CategoryController::class)->except(['index', 'show']);
+
+    Route::apiResource('brands', BrandController::class)->except(['index', 'show']);
+
+    Route::post('products/{product}/images', [ProductImageController::class, 'store']);
+    Route::delete('products/{product}/images/{productImage}', [ProductImageController::class, 'destroy']);
+
+    Route::apiResource('attributes', AttributeController::class)->except(['index', 'show']);
+
+    Route::apiResource('attribute-values', AttributeValueController::class)->except(['index', 'show']);
+
+    Route::apiResource('product-variants', ProductVariantController::class)->except(['index', 'show']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Inventory
+    |--------------------------------------------------------------------------
+    */
+
+    // Low Stock
+    Route::get('inventories/low-stock', [InventoryController::class, 'lowStock']);
+
+    // InventoryController routes
+    Route::apiResource('inventories', InventoryController::class);
+
+    // StockMovementController routes
+    Route::apiResource('stock-movements', StockMovementController::class)
+        ->only([
+            'index',
+            'store',
+            'show',
+        ]);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Orders management
+    |--------------------------------------------------------------------------
+    */
+
+    Route::prefix('admin')->group(function () {
+
+        Route::get('/orders', [AdminOrderController::class, 'index']);
+
+        Route::get('/orders/{order}', [AdminOrderController::class, 'show']);
+
+        Route::patch('/orders/{order}/status', [AdminOrderController::class, 'updateStatus']);
+
+    });
+
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -73,13 +119,18 @@ Route::apiResource('stock-movements', StockMovementController::class)
 
 Route::prefix('auth')->group(function () {
 
-    Route::post('/register', [AuthController::class, 'register']);
+    // Limited per email + IP (see the "auth" limiter in AppServiceProvider).
+    Route::middleware('throttle:auth')->group(function () {
 
-    Route::post('/login', [AuthController::class, 'login']);
+        Route::post('/register', [AuthController::class, 'register']);
 
-    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+        Route::post('/login', [AuthController::class, 'login']);
 
-    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+        Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+
+        Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+
+    });
 
     Route::get(
         '/email/verify/{id}/{hash}',
@@ -96,7 +147,8 @@ Route::prefix('auth')->group(function () {
 
         Route::put('/change-password', [AuthController::class, 'changePassword']);
 
-        Route::post('/email/resend', [AuthController::class, 'resendVerification']);
+        Route::post('/email/resend', [AuthController::class, 'resendVerification'])
+            ->middleware('throttle:6,1');
 
     });
 
@@ -143,7 +195,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/orders', [OrderController::class, 'store']);
 
     Route::get('/orders/{order}', [OrderController::class, 'show']);
-    
+
+    Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel']);
+
     Route::get( '/orders/{order}/invoice',[OrderController::class, 'downloadInvoice']);
     
     /*

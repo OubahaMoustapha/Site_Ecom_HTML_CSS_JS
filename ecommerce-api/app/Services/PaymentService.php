@@ -63,17 +63,32 @@ class PaymentService
 
         }
 
-        if ($order->payment()->exists()) {
+        $payment = DB::transaction(function () use ($order, $data) {
 
-            throw ValidationException::withMessages([
-                'payment' => [
-                    'Order has already been paid.',
-                ],
-            ]);
+            // Lock the order so two concurrent requests cannot pay it twice.
+            $order = Order::whereKey($order->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        }
+            if ($order->payment()->exists()) {
 
-        return DB::transaction(function () use ($order, $data) {
+                throw ValidationException::withMessages([
+                    'payment' => [
+                        'Order has already been paid.',
+                    ],
+                ]);
+
+            }
+
+            if ($order->status !== Order::STATUS_PENDING) {
+
+                throw ValidationException::withMessages([
+                    'order' => [
+                        "Order cannot be paid while its status is {$order->status}.",
+                    ],
+                ]);
+
+            }
 
             $payment = Payment::create([
 
@@ -90,20 +105,23 @@ class PaymentService
                 'paid_at' => now(),
 
             ]);
-    $order->update([
-        'status' => 'paid',
-    ]);
+            $order->update([
+                'status' => Order::STATUS_PAID,
+            ]);
 
-    $payment->load([
-        'order.user',
-        'order.items',
-    ]);
-
-    event(
-        new PaymentCompleted($payment)
-    );
-
-    return $payment;
+            return $payment;
         });
+
+        $payment->load([
+            'order.user',
+            'order.items',
+        ]);
+
+        // Dispatched after commit so a mail failure cannot roll back the payment.
+        event(
+            new PaymentCompleted($payment)
+        );
+
+        return $payment;
     }
 }

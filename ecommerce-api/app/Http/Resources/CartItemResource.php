@@ -28,6 +28,8 @@ class CartItemResource extends JsonResource
 
             'product_name' => $this->productVariant->product->name,
 
+            'subtotal' => round($this->productVariant->price * $this->quantity, 2),
+
         ];
     }
 }

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CreateProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
+use App\Models\OrderItem;
 use App\Models\Product;
 
 
@@ -47,7 +48,13 @@ class ProductController extends Controller
      */
     public function show(Product $product)
     {
-        $product->load(['category', 'brand']);
+        $product->load([
+            'category',
+            'brand',
+            'images',
+            'variants.inventory',
+            'variants.attributeValues.attribute',
+        ]);
 
         return new ProductResource($product);
     }
@@ -73,6 +80,14 @@ class ProductController extends Controller
      */
     public function destroy(Product $product)
     {
+        // Deleting would cascade to variants and erase order history.
+        if (OrderItem::whereIn('product_variant_id', $product->variants()->select('id'))->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Product has been ordered and cannot be deleted. Deactivate it instead.',
+            ], 409);
+        }
+
         $product->delete();
 
         return response()->json([

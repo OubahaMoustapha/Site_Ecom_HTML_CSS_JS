@@ -102,6 +102,30 @@
 
 </div>
 
+@if($order->shipping_address)
+
+<div class="section">
+
+    <h2>Shipping Address</h2>
+
+    <p>
+
+        {{ $order->shipping_name }}<br>
+
+        {{ $order->shipping_address }}<br>
+
+        {{ $order->shipping_city }} {{ $order->shipping_postal_code }}<br>
+
+        {{ $order->shipping_country }}<br>
+
+        <strong>Phone:</strong> {{ $order->shipping_phone }}
+
+    </p>
+
+</div>
+
+@endif
+
 <div class="section">
 
     <h2>Order Items</h2>
@@ -185,7 +209,7 @@
         <th>Payment Method</th>
 
         <td class="text-right">
-            {{ ucfirst($order->payment->method) }}
+            {{ ucfirst($order->payment->method ?? '-') }}
         </td>
 
     </tr>
@@ -195,7 +219,7 @@
         <th>Payment Status</th>
 
         <td class="text-right">
-            {{ ucfirst($order->payment->status) }}
+            {{ ucfirst($order->payment->status ?? 'unpaid') }}
         </td>
 
     </tr>
