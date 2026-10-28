@@ -1,0 +1,143 @@
+/*
+|--------------------------------------------------------------------------
+| Design tokens — Durra brand
+|--------------------------------------------------------------------------
+| Brand colours (60 · 25 · 10 · 5): Pearl #F7F3EC, Night ink #16142E,
+| Majorelle blue #2B44D6, Saffron #F4A62A.
+| The four modes change the mood of the shell; each world overrides the
+| tokens inside its own pages (see worlds.css).
+*/
+
+:root {
+    --pearl: #F7F3EC;
+    --ink: #16142E;
+    --majorelle: #2B44D6;
+    --saffron: #F4A62A;
+
+    --font-display: "Reem Kufi", "IBM Plex Sans Arabic", system-ui, sans-serif;
+    --font-body: "IBM Plex Sans Arabic", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --font-latin: "Playfair Display", Georgia, serif;
+
+    --gutter: clamp(16px, 4vw, 40px);
+    --max-width: 1240px;
+    --shadow: 0 1px 2px rgb(22 20 46 / 6%), 0 8px 24px rgb(22 20 46 / 6%);
+    --ease: cubic-bezier(.2, .7, .2, 1);
+
+    color-scheme: light;
+}
+
+/* Day (default) — pearl, calm, medium radius. */
+:root,
+:root[data-mode="day"] {
+    --bg: #F7F3EC;
+    --surface: #FFFFFF;
+    --surface-2: #F1ECE2;
+    --text: #16142E;
+    --text-2: #4A4762;
+    --muted: #67637C;
+    --line: #E6E0D4;
+    --primary: #2B44D6;
+    --primary-ink: #FFFFFF;
+    --primary-soft: #E6EAFB;
+    --accent: #F4A62A;
+    /* Accent as text colour on this mode's light surfaces (WCAG AA). */
+    --accent-text: #A35F00;
+    --danger: #B3261E;
+    --success: #1D6B2B;
+    --warning: #9A4A00;
+    --accent-ink: #16142E;
+    --band: #F4A62A;
+    --band-ink: #16142E;
+    --chart: #2B44D6;
+    --tint: #ECEFFB;
+    --radius-sm: 10px;
+    --radius: 14px;
+    --radius-lg: 22px;
+    --pill: 999px;
+}
+
+/* Dark — night ink with a softened blue. */
+:root[data-mode="dark"] {
+    --bg: #0F0E1F;
+    --surface: #1A1830;
+    --surface-2: #232140;
+    --text: #F2EFE8;
+    --text-2: #CBC7DE;
+    --muted: #9C98B5;
+    --line: #2E2B4D;
+    --primary: #7C8CFF;
+    --primary-ink: #0F0E1F;
+    --primary-soft: #262A55;
+    --accent: #F4A62A;
+    /* Accent as text colour on this mode's light surfaces (WCAG AA). */
+    --accent-text: #F4A62A;
+    --danger: #FF8A80;
+    --success: #7BD88F;
+    --warning: #FFB86B;
+    --accent-ink: #16142E;
+    --band: #232140;
+    --band-ink: #F2EFE8;
+    --chart: #6B7BF5;
+    --tint: #24224A;
+    --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 25%);
+    color-scheme: dark;
+}
+
+/* Men — steel, navy and brass, sharp corners. */
+:root[data-mode="men"] {
+    --bg: #EEF0F3;
+    --surface: #FFFFFF;
+    --surface-2: #E3E7EC;
+    --text: #141A23;
+    --text-2: #3C4654;
+    --muted: #59636F;
+    --line: #D5DAE1;
+    --primary: #1F3A5F;
+    --primary-ink: #FFFFFF;
+    --primary-soft: #E1E8F1;
+    --accent: #C9A24A;
+    /* Accent as text colour on this mode's light surfaces (WCAG AA). */
+    --accent-text: #7D6220;
+    --danger: #B3261E;
+    --success: #1D6B2B;
+    --warning: #9A4A00;
+    --accent-ink: #141A23;
+    --band: #1F3A5F;
+    --band-ink: #FFFFFF;
+    --chart: #3A6EA5;
+    --tint: #E6EBF1;
+    --radius-sm: 2px;
+    --radius: 4px;
+    --radius-lg: 6px;
+    --pill: 4px;
+}
+
+/* Women — rose, plum and soft gold, generous curves. */
+:root[data-mode="women"] {
+    --bg: #FBF0F2;
+    --surface: #FFFFFF;
+    --surface-2: #F6E4E8;
+    --text: #3A1730;
+    --text-2: #5E3A52;
+    --muted: #7A5A6E;
+    --line: #F0D9DF;
+    --primary: #C23B6B;
+    --primary-ink: #FFFFFF;
+    --primary-soft: #FBE3EB;
+    --accent: #E8B86B;
+    /* Accent as text colour on this mode's light surfaces (WCAG AA). */
+    --accent-text: #8F5A1F;
+    --danger: #B3261E;
+    --success: #1D6B2B;
+    --warning: #9A4A00;
+    --accent-ink: #3A1730;
+    --band: #E8B86B;
+    --band-ink: #3A1730;
+    --chart: #C23B6B;
+    --tint: #F8E6EC;
+    --radius-sm: 14px;
+    --radius: 20px;
+    --radius-lg: 28px;
+    --pill: 999px;
+}

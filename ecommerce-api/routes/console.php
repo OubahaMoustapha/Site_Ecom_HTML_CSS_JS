@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,3 +31,15 @@ Artisan::command('user:make-admin {email}', function (string $email) {
     return 0;
 
 })->purpose('Grant the administrator role to a user');
+
+/*
+|--------------------------------------------------------------------------
+| Housekeeping
+|--------------------------------------------------------------------------
+|
+| Expired API tokens are deleted daily (run `php artisan schedule:work`
+| locally or a cron entry for `schedule:run` in production).
+|
+*/
+
+Schedule::command('sanctum:prune-expired --hours=24')->daily();

@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rules\Password;
 
 class ResetPasswordRequest extends FormRequest
 {
@@ -34,8 +35,8 @@ class ResetPasswordRequest extends FormRequest
             'password' => [
                 'required',
                 'confirmed',
-                'min:8',
                 'max:255',
+                Password::defaults(),
             ],
 
         ];

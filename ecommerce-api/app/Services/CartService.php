@@ -32,10 +32,10 @@ class CartService
     {
         $cart = $this->getCart($user);
 
-        $variant = ProductVariant::with('inventory')
+        $variant = ProductVariant::with(['inventory', 'product'])
             ->findOrFail($data['product_variant_id']);
 
-        if (! $variant->is_active) {
+        if (! $variant->is_active || ! $variant->product?->is_active) {
 
             throw ValidationException::withMessages([
                 'product_variant_id' => [

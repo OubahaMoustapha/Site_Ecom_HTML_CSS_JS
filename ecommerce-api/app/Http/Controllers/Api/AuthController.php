@@ -8,6 +8,7 @@ use App\Http\Requests\RegisterRequest;
 use App\Http\Resources\UserResource;
 use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use App\Http\Requests\UpdateProfileRequest;
 use App\Http\Requests\ChangePasswordRequest;
@@ -131,7 +132,7 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Password reset link sent successfully.',
+            'message' => 'If an account exists for this email, a password reset link has been sent.',
         ]);
     }
 
@@ -156,9 +157,14 @@ class AuthController extends Controller
     /**
      * Verify authenticated user's email.
      */
-    public function verifyEmail(Request $request): JsonResponse
+    public function verifyEmail(Request $request): JsonResponse|RedirectResponse
     {
         $this->authService->verifyEmail($request);
+
+        // Opened from the email in a browser: continue on the storefront.
+        if (! $request->expectsJson()) {
+            return redirect()->away(config('app.frontend_url') . '/account?verified=1');
+        }
 
         return response()->json([
             'success' => true,

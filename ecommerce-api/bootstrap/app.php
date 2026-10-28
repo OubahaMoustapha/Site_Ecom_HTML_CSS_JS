@@ -17,6 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
         ]);
 
+        // Outermost and global, so CORS preflight replies and unknown-route 404s carry them too.
+        $middleware->prepend(\App\Http\Middleware\SecurityHeaders::class);
+
         // There is no web login page: guests get a JSON 401 instead of a redirect.
         $middleware->redirectGuestsTo(fn () => null);
     })

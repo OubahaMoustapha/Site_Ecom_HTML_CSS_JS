@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -43,6 +44,14 @@ class AppServiceProvider extends ServiceProvider
         | per IP to stop one client from trying many different emails.
         |
         */
+
+        /*
+        |--------------------------------------------------------------------------
+        | Password policy (register, reset and change password)
+        |--------------------------------------------------------------------------
+        */
+
+        Password::defaults(fn () => Password::min(8)->letters()->numbers());
 
         RateLimiter::for('auth', function (Request $request) {
 

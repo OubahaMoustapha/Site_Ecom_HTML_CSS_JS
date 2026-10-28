@@ -1,12 +1,15 @@
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+export const TOKEN_STORAGE_KEY = "durra.token";
+
 type RequestConfig = {
     endpoint: string;
     method?: string;
     query?: Record<string, unknown>;
     body?: unknown;
     headers?: Record<string, string>;
+    responseType?: "json" | "blob";
 };
 
 type ApiError = {
@@ -15,7 +18,7 @@ type ApiError = {
     errors?: Record<string, string[]>;
 };
 
-class ApiRequestError extends Error {
+export class ApiRequestError extends Error {
     status: number;
     errors?: Record<string, string[]>;
 
@@ -28,6 +31,14 @@ class ApiRequestError extends Error {
     }
 }
 
+function readToken(): string | null {
+    try {
+        return localStorage.getItem(TOKEN_STORAGE_KEY);
+    } catch {
+        return null;
+    }
+}
+
 export default async function apiClient<T>(
     config: RequestConfig
 ): Promise<T> {
@@ -37,7 +48,7 @@ export default async function apiClient<T>(
         const params = new URLSearchParams();
 
         for (const [key, value] of Object.entries(config.query)) {
-            if (value !== undefined && value !== null) {
+            if (value !== undefined && value !== null && value !== "") {
                 params.append(key, String(value));
             }
         }
@@ -49,20 +60,26 @@ export default async function apiClient<T>(
         }
     }
 
+    const isFormData = config.body instanceof FormData;
+    const token = readToken();
+
     const response = await fetch(url, {
         method: config.method ?? "GET",
 
         headers: {
             Accept: "application/json",
-            ...(config.body !== undefined && {
+            ...(token && { Authorization: `Bearer ${token}` }),
+            ...(config.body !== undefined && !isFormData && {
                 "Content-Type": "application/json",
             }),
             ...config.headers,
         },
 
-        body: config.body !== undefined
-            ? JSON.stringify(config.body)
-            : undefined,
+        body: config.body === undefined
+            ? undefined
+            : isFormData
+                ? config.body as FormData
+                : JSON.stringify(config.body),
     });
 
     if (!response.ok) {
@@ -97,6 +114,14 @@ export default async function apiClient<T>(
         }
 
         throw new ApiRequestError(errorData);
+    }
+
+    if (config.responseType === "blob") {
+        return await response.blob() as T;
+    }
+
+    if (response.status === 204) {
+        return undefined as T;
     }
 
     const data: T = await response.json();

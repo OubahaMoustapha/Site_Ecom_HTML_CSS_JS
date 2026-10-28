@@ -7,6 +7,8 @@ use App\Http\Requests\CreateInventoryRequest;
 use App\Http\Requests\UpdateInventoryRequest;
 use App\Http\Resources\InventoryResource;
 use App\Models\Inventory;
+use App\Models\StockMovement;
+use App\Services\InventoryService;
 
 class InventoryController extends Controller
 {
@@ -51,11 +53,30 @@ class InventoryController extends Controller
     /**
      * Update the specified inventory.
      */
-    public function update(UpdateInventoryRequest $request, Inventory $inventory)
-    {
-        $inventory->update($request->validated());
+    public function update(
+        UpdateInventoryRequest $request,
+        Inventory $inventory,
+        InventoryService $inventoryService
+    ) {
+        $data = $request->validated();
 
-        $inventory->load('productVariant');
+        // A quantity change goes through the movement log so it stays auditable.
+        if (array_key_exists('quantity', $data) && (int) $data['quantity'] !== $inventory->quantity) {
+            $inventoryService->createMovement(
+                $inventory->product_variant_id,
+                StockMovement::TYPE_ADJUSTMENT,
+                (int) $data['quantity'],
+                'Inventory updated by ' . $request->user()->email
+            );
+        }
+
+        unset($data['quantity']);
+
+        if ($data) {
+            $inventory->refresh()->update($data);
+        }
+
+        $inventory->refresh()->load('productVariant');
 
         return response()->json([
             'success' => true,

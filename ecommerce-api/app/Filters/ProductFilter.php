@@ -2,10 +2,19 @@
 
 namespace App\Filters;
 
+use App\Models\Category;
 use Illuminate\Database\Eloquent\Builder;
 
 class ProductFilter
 {
+    /**
+     * Catalog routes are public, so the token is read optionally.
+     */
+    public static function viewerIsAdmin(): bool
+    {
+        return (bool) auth('sanctum')->user()?->isAdmin();
+    }
+
     public static function apply(Builder $query): Builder
     {
         // Search
@@ -14,14 +23,22 @@ class ProductFilter
         }
 
         // Active filter
-        // boolean() maps "true"/"false"/"1"/"0" query strings correctly
-        if (request()->has('is_active')) {
+        // Visitors and customers only ever see active products; administrators
+        // may filter by status. boolean() maps "true"/"false"/"1"/"0" correctly.
+        if (! self::viewerIsAdmin()) {
+            $query->where('is_active', true);
+        } elseif (request()->has('is_active')) {
             $query->where('is_active', request()->boolean('is_active'));
         }
 
-        // Category filter
+        // Category filter (a parent category also matches its direct sub-categories)
         if (request()->filled('category_id')) {
-            $query->where('category_id', request('category_id'));
+            $categoryId = (int) request('category_id');
+
+            $query->where(function (Builder $query) use ($categoryId) {
+                $query->where('category_id', $categoryId)
+                    ->orWhereIn('category_id', Category::where('parent_id', $categoryId)->select('id'));
+            });
         }
 
         // Brand filter

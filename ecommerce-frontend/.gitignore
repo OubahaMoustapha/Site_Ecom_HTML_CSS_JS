@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Production build settings (VITE_* values end up public in the bundle anyway)
+.env.production

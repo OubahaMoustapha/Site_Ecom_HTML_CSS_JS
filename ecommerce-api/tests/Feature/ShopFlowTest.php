@@ -9,11 +9,14 @@ use App\Models\Order;
 use App\Models\ProductVariant;
 use App\Models\StockMovement;
 use App\Models\User;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Database\Seeders\CatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Events\CallQueuedListener;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\URL;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -109,6 +112,35 @@ class ShopFlowTest extends TestCase
             ->assertJsonStructure(['data' => ['variants' => [['id', 'sku', 'price', 'stock']], 'images']]);
     }
 
+    public function test_product_listing_includes_variants_with_stock(): void
+    {
+        $this->getJson('/api/products')
+            ->assertOk()
+            ->assertJsonStructure(['data' => [['id', 'images', 'variants' => [['id', 'sku', 'price', 'stock']]]]]);
+    }
+
+    public function test_parent_category_filter_includes_sub_categories(): void
+    {
+        $child = \App\Models\Category::findOrFail($this->variant->product->category_id);
+        $parent = \App\Models\Category::create(['name' => 'World', 'slug' => 'world-test']);
+        $child->update(['parent_id' => $parent->id]);
+
+        $this->getJson("/api/products?category_id={$parent->id}")
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $this->variant->product_id);
+
+        // A leaf category still matches only itself.
+        $this->getJson("/api/products?category_id={$child->id}")
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+    }
+
+    public function test_per_page_is_capped(): void
+    {
+        $this->getJson('/api/products?per_page=500')->assertOk()->assertJsonPath('meta.per_page', 50);
+        $this->getJson('/api/products?per_page=2')->assertOk()->assertJsonPath('meta.per_page', 2);
+    }
+
     public function test_checkout_decreases_stock_logs_movement_and_clears_cart(): void
     {
         $user = User::factory()->create();
@@ -182,6 +214,15 @@ class ShopFlowTest extends TestCase
         $this->assertSame(Order::STATUS_PAID, Order::find($orderId)->status);
 
         Mail::assertSent(InvoiceMail::class);
+
+        $this->getJson("/api/orders/{$orderId}")
+            ->assertOk()
+            ->assertJsonPath('data.payment.status', 'paid')
+            ->assertJsonPath('data.payment.method', 'card');
+
+        $this->getJson('/api/orders')
+            ->assertOk()
+            ->assertJsonPath('data.0.payment.status', 'paid');
 
         $this->postJson('/api/payments', ['order_id' => $orderId, 'method' => 'card'])
             ->assertUnprocessable();
@@ -372,5 +413,151 @@ class ShopFlowTest extends TestCase
             'device_name' => 'postman',
             'role' => 'admin',
         ])->assertCreated()->assertJsonPath('data.user.role', User::ROLE_CUSTOMER);
+    }
+
+    public function test_password_policy_requires_letters_and_numbers(): void
+    {
+        foreach (['12345678', 'onlyletters', 'short1'] as $weak) {
+            $this->postJson('/api/auth/register', [
+                'name' => 'Weak Password',
+                'email' => "weak-{$weak}@example.com",
+                'password' => $weak,
+                'password_confirmation' => $weak,
+                'device_name' => 'test',
+            ])->assertUnprocessable()->assertJsonValidationErrors('password');
+        }
+
+        $user = User::factory()->create(['password' => 'Password123']);
+        Sanctum::actingAs($user);
+
+        $this->putJson('/api/auth/change-password', [
+            'current_password' => 'Password123',
+            'password' => '87654321',
+            'password_confirmation' => '87654321',
+        ])->assertUnprocessable()->assertJsonValidationErrors('password');
+    }
+
+    public function test_unverified_user_cannot_place_an_order(): void
+    {
+        Sanctum::actingAs(User::factory()->unverified()->create());
+
+        $this->postJson('/api/cart', [
+            'product_variant_id' => $this->variant->id,
+            'quantity' => 1,
+        ])->assertOk();
+
+        $this->postJson('/api/orders', $this->shipping())->assertForbidden();
+
+        $this->assertSame(20, $this->stock());
+    }
+
+    public function test_inactive_product_is_hidden_from_the_public_but_not_from_admins(): void
+    {
+        $product = $this->variant->product;
+        $product->update(['is_active' => false]);
+
+        $this->getJson("/api/products/{$product->id}")->assertNotFound();
+        $this->getJson('/api/products?is_active=0')->assertOk()->assertJsonPath('meta.total', 0);
+
+        Sanctum::actingAs(User::factory()->create());
+        $this->postJson('/api/cart', [
+            'product_variant_id' => $this->variant->id,
+            'quantity' => 1,
+        ])->assertUnprocessable();
+
+        Sanctum::actingAs($this->admin());
+        $this->getJson("/api/products/{$product->id}")->assertOk();
+        $this->getJson('/api/products?is_active=0')->assertOk()->assertJsonPath('meta.total', 1);
+    }
+
+    public function test_inventory_update_is_recorded_as_a_stock_movement(): void
+    {
+        Sanctum::actingAs($this->admin());
+
+        $inventory = Inventory::where('product_variant_id', $this->variant->id)->firstOrFail();
+
+        $this->putJson("/api/inventories/{$inventory->id}", ['quantity' => 7, 'low_stock_threshold' => 3])
+            ->assertOk()
+            ->assertJsonPath('data.quantity', 7);
+
+        $movement = StockMovement::where('product_variant_id', $this->variant->id)->latest('id')->firstOrFail();
+        $this->assertSame(StockMovement::TYPE_ADJUSTMENT, $movement->type);
+        $this->assertSame(20, $movement->quantity_before);
+        $this->assertSame(7, $movement->quantity);
+        $this->assertSame(3, $inventory->fresh()->low_stock_threshold);
+    }
+
+    public function test_categories_accept_a_capped_page_size(): void
+    {
+        $this->getJson('/api/categories?per_page=100')->assertOk()->assertJsonPath('meta.per_page', 100);
+        $this->getJson('/api/categories?per_page=5000')->assertOk()->assertJsonPath('meta.per_page', 100);
+    }
+
+    public function test_api_sends_security_headers_and_restricts_cors(): void
+    {
+        $this->getJson('/api/products')
+            ->assertOk()
+            ->assertHeader('X-Content-Type-Options', 'nosniff')
+            ->assertHeader('X-Frame-Options', 'DENY')
+            ->assertHeader('Referrer-Policy', 'no-referrer');
+
+        // Another site is never echoed back, so browsers refuse to share the response with it.
+        $evil = $this->getJson('/api/products', ['Origin' => 'https://evil.example']);
+        $this->assertNotSame('https://evil.example', $evil->headers->get('Access-Control-Allow-Origin'));
+        $this->assertNotSame('*', $evil->headers->get('Access-Control-Allow-Origin'));
+
+        $this->getJson('/api/products', ['Origin' => config('app.frontend_url')])
+            ->assertHeader('Access-Control-Allow-Origin', config('app.frontend_url'));
+    }
+
+    public function test_api_tokens_expire(): void
+    {
+        $this->assertSame(60 * 24 * 7, (int) config('sanctum.expiration'));
+    }
+
+    public function test_verification_link_redirects_browsers_and_answers_api_clients(): void
+    {
+        $user = User::factory()->unverified()->create();
+
+        $url = URL::temporarySignedRoute('verification.verify', now()->addHour(), [
+            'id' => $user->id,
+            'hash' => sha1($user->email),
+        ]);
+
+        $this->get($url, ['Accept' => 'text/html'])
+            ->assertRedirect(config('app.frontend_url') . '/account?verified=1');
+
+        $this->assertTrue($user->fresh()->hasVerifiedEmail());
+
+        $this->getJson($url)->assertOk()->assertJsonPath('success', true);
+    }
+
+    public function test_forgot_password_does_not_reveal_whether_an_email_exists(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create();
+
+        $known = $this->postJson('/api/auth/forgot-password', ['email' => $user->email])->assertOk();
+        $unknown = $this->postJson('/api/auth/forgot-password', ['email' => 'nobody@example.com'])->assertOk();
+
+        $this->assertSame($known->json('message'), $unknown->json('message'));
+        Notification::assertSentTo($user, ResetPassword::class);
+        Notification::assertCount(1);
+    }
+
+    public function test_registration_survives_a_mail_outage(): void
+    {
+        Notification::shouldReceive('send')->andThrow(new \RuntimeException('SMTP down'));
+
+        $this->postJson('/api/auth/register', [
+            'name' => 'Mail Outage',
+            'email' => 'outage@example.com',
+            'password' => 'Password123',
+            'password_confirmation' => 'Password123',
+            'device_name' => 'test',
+        ])->assertCreated()->assertJsonStructure(['data' => ['token']]);
+
+        $this->assertDatabaseHas('users', ['email' => 'outage@example.com']);
     }
 }

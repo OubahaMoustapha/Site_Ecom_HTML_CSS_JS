@@ -14,7 +14,10 @@ class CategoryController extends Controller
      */
     public function index()
     {
-        $categories = Category::paginate(10);
+        // The storefront needs the whole (small) tree at once: allow up to 100 per page.
+        $perPage = min(max((int) request('per_page', 10), 1), 100);
+
+        $categories = Category::paginate($perPage)->withQueryString();
 
         return CategoryResource::collection($categories);
     }

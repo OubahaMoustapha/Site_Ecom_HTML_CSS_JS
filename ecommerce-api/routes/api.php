@@ -192,7 +192,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/orders', [OrderController::class, 'index']);
 
-    Route::post('/orders', [OrderController::class, 'store']);
+    // Placing an order requires a confirmed email address.
+    Route::post('/orders', [OrderController::class, 'store'])->middleware('verified');
 
     Route::get('/orders/{order}', [OrderController::class, 'show']);
 

@@ -50,7 +50,8 @@ return [
     |
     */
 
-    'expiration' => null,
+    // Bearer tokens live 7 days by default (null would mean "never expire").
+    'expiration' => env('SANCTUM_EXPIRATION', 60 * 24 * 7),
 
     /*
     |--------------------------------------------------------------------------

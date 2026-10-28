@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 
 
@@ -27,7 +28,12 @@ class AuthService
             'password' => $data['password'],           
         ]);
 
-        $user->sendEmailVerificationNotification();
+        // A mail outage must not fail the sign-up: the link can be re-sent later.
+        try {
+            $user->sendEmailVerificationNotification();
+        } catch (Throwable $exception) {
+            report($exception);
+        }
 
         $token = $user
             ->createToken($data['device_name'])
@@ -136,16 +142,11 @@ class AuthService
      */
     public function forgotPassword(string $email): void
     {
-        $status = Password::sendResetLink([
+        // The reply is identical whether or not the email is registered (or was
+        // just sent a link), so this endpoint cannot be used to discover accounts.
+        Password::sendResetLink([
             'email' => $email,
         ]);
-
-        if ($status !== Password::RESET_LINK_SENT) {
-
-            throw ValidationException::withMessages([
-                'email' => [__($status)],
-            ]);
-        }
     }
 
 

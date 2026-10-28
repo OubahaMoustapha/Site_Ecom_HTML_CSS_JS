@@ -154,6 +154,18 @@ The API uses **Laravel Sanctum personal access tokens**:
    Authorization: Bearer <token>
    ```
 3. `POST /api/auth/logout` revokes the current token only; other devices stay logged in.
+4. Tokens **expire after 7 days** (`SANCTUM_EXPIRATION`, in minutes). Expired tokens are deleted daily by the
+   scheduler (`sanctum:prune-expired`), so run `php artisan schedule:work` locally or a `schedule:run` cron in production.
+
+**Password policy** (register, reset and change password): at least 8 characters, with letters and numbers.
+
+**Email verification:** placing an order (`POST /orders`) requires a verified email (`403` otherwise).
+The link in the verification email redirects a browser to `FRONTEND_URL/account?verified=1`;
+an API client (`Accept: application/json`) gets a JSON reply instead.
+
+**Browser access (CORS):** only `FRONTEND_URL` (or the comma-separated `CORS_ALLOWED_ORIGINS`) may call
+the API from a browser. Every response also carries `X-Content-Type-Options`, `X-Frame-Options`,
+`Referrer-Policy` and a restrictive `Content-Security-Policy`.
 
 **Access levels:**
 
@@ -261,11 +273,13 @@ Reading is public; writing is admin-only.
 | `category_id` | `?category_id=1` | Products in a category |
 | `brand_id` | `?brand_id=1` | Products of a brand |
 | `min_price` / `max_price` | `?min_price=10&max_price=50` | Price range |
-| `is_active` | `?is_active=true` | Active or inactive products |
+| `is_active` | `?is_active=false` | **Admins only.** Visitors and customers always get active products only |
 | `sort` | `?sort=price`, `?sort=-price` | Sort by `price`, `name` or `created_at`; a leading `-` means descending |
 
 - **`GET /products/{id}`** returns the product with its `images` and `variants`; each variant includes `stock` and `attribute_values`. This is what a product details page needs to know which `product_variant_id` to add to the cart.
 - **`GET /product-variants?product_id=1`** returns the variants of a single product.
+- **Inactive products** answer `404` on `GET /products/{id}` for everyone except admins, and cannot be added to a cart or ordered.
+- **`GET /categories?per_page=100`** returns up to 100 categories per page (default 10), so a storefront can load the whole tree in one request.
 - **Protected deletion:** a product or variant that has already been ordered cannot be deleted; the API returns `409`. Deleting it would have erased past order items because of `cascadeOnDelete`. The correct approach is to deactivate it with `"is_active": false`.
 
 ### 7.3 Inventory (admin only)
@@ -276,13 +290,13 @@ Reading is public; writing is admin-only.
 | GET | `/inventories/low-stock` | Quantity ≤ `low_stock_threshold` |
 | POST | `/inventories` | `product_variant_id`, `quantity`, `low_stock_threshold` (one record per variant) |
 | GET | `/inventories/{id}` | — |
-| PUT | `/inventories/{id}` | `quantity`, `low_stock_threshold` (direct edit, **no** movement logged) |
+| PUT | `/inventories/{id}` | `quantity`, `low_stock_threshold` (a quantity change is logged as an `adjustment` movement) |
 | DELETE | `/inventories/{id}` | — |
 | GET | `/stock-movements` | Movement history |
 | POST | `/stock-movements` | `product_variant_id`, `type` (`in` / `out` / `adjustment`), `quantity`, `note` |
 | GET | `/stock-movements/{id}` | — |
 
-> To change a quantity while keeping an audit trail, use `POST /stock-movements`, not `PUT /inventories`:
+> Every quantity change is recorded in the movement log. With `POST /stock-movements`:
 > - `in` adds the quantity to the stock.
 > - `out` subtracts it, and is rejected with `422` if the stock is insufficient.
 > - `adjustment` sets the stock to exactly the given value (e.g. after a physical count).
@@ -304,7 +318,7 @@ The response includes `items_count`, `total_quantity` and `total`; each item inc
 | Method | URL | Body / Notes |
 |---|---|---|
 | GET | `/orders` | My orders |
-| POST | `/orders` | Creates an order from the cart (fields below) |
+| POST | `/orders` | Creates an order from the cart (fields below). Requires a verified email, otherwise `403` |
 | GET | `/orders/{id}` | — |
 | POST | `/orders/{id}/cancel` | Only when the status is `pending` |
 | GET | `/orders/{id}/invoice` | PDF invoice including the shipping address (unpaid orders show payment status `Unpaid`) |
@@ -360,7 +374,8 @@ The rules live in `Order::STATUS_TRANSITIONS`; any other transition is rejected 
 
 All steps run inside **a single database transaction**:
 
-1. Load the cart. If it is empty → `422`.
+1. **Lock** the cart row and load its items. If it is empty → `422`. Two simultaneous checkouts of the same
+   cart (double submit, two tabs) therefore run one after the other, and the second one finds the cart empty.
 2. For each item: check that the variant is active, then **lock** its inventory row (`lockForUpdate`) and check that the quantity is sufficient.
 3. Create the order with the shipping details.
 4. Create `order_items` as a snapshot of name and price.
@@ -600,6 +615,7 @@ This scenario uses the `TSHIRT-M` variant (stock 3), referred to as `M_ID`.
 | E2 | `POST /orders` | Empty cart | 422 `Your cart is empty.` |
 | E3 | `POST /auth/register` | Email already used | 422 on `email` |
 | E4 | `POST /auth/register` | Mismatched `password_confirmation` | 422 on `password` |
+| E4b | `POST /auth/register` | `"password": "12345678"` (no letters) | 422 on `password` |
 | E5 | `POST /payments` | `"method": "bitcoin"` | 422 on `method` |
 | E6 | `POST /products` (admin) | Existing `slug` | 422 on `slug` |
 | E7 | `POST /products/1/images` (admin) | form-data `image` = a PDF file | 422 (only jpg/jpeg/png/webp up to 4 MB) |
@@ -649,9 +665,20 @@ These are real limits of the current code and are worth stating openly when pres
 
 - **Payment is simulated (development stage):** `POST /payments` records the payment as `paid` directly, without a real gateway such as Stripe or PayPal. The `refunded` status on cancellation is a record only; no money is actually returned.
 - **Slow payments locally:** with the default `MAIL_QUEUE_CONNECTION=sync`, the invoice PDF and SMTP send happen inside the payment request (about 8–18 s with Gmail). On a server, switch to `database` with a queue worker (see section 8).
-- **Verification email is still sent inline:** a verification email failure on `register` returns `500` even though the user was created.
 - **Apache in XAMPP runs PHP 8.2**, while the project requires PHP 8.3, so locally the API runs only through `php artisan serve`.
 - **No shipping cost, taxes or coupons:** `total` always equals `subtotal`.
-- **`PUT /inventories/{id}`** changes the quantity without logging a movement. Use `stock-movements` for traceability.
-- **`forgot-password`** rejects unknown emails with `422`, which reveals whether an email is registered (user enumeration). Throttling mitigates this but does not remove it.
 - **`lockForUpdate` locks** work on MySQL. SQLite, used by the tests, ignores them, so real concurrency must be tested on MySQL.
+
+---
+
+## 11. Production Checklist
+
+| Setting | Local (now) | Production |
+|---|---|---|
+| `APP_ENV` / `APP_DEBUG` | `local` / `true` | `production` / `false` (otherwise 500 errors expose SQL and stack traces) |
+| `MAIL_QUEUE_CONNECTION` | `sync` | `database` + a `php artisan queue:work` process (Supervisor) |
+| Scheduler | optional | cron: `* * * * * php artisan schedule:run` (prunes expired tokens) |
+| `FRONTEND_URL` / `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | the real storefront domain(s), HTTPS only |
+| `SANCTUM_EXPIRATION` | 7 days | adjust to the business need |
+| Caches | none | `php artisan config:cache route:cache view:cache` after each deploy |
+| PHP | built-in server | PHP-FPM with OPcache enabled |

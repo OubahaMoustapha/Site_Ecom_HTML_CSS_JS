@@ -18,11 +18,21 @@ class ProductController extends Controller
      */
     public function index()
     {
-        $query = Product::with(['category', 'brand']);
+        // Variants (with stock) and images are included so a listing can add
+        // to the cart without one extra request per product.
+        $query = Product::with([
+            'category',
+            'brand',
+            'images',
+            'variants.inventory',
+            'variants.attributeValues.attribute',
+        ]);
 
         $query = ProductFilter::apply($query);
 
-        $products = $query->paginate(10);
+        $perPage = min(max((int) request('per_page', 10), 1), 50);
+
+        $products = $query->paginate($perPage)->withQueryString();
 
         return ProductResource::collection($products);
     }
@@ -48,6 +58,9 @@ class ProductController extends Controller
      */
     public function show(Product $product)
     {
+        // An inactive product does not exist for anyone but administrators.
+        abort_if(! $product->is_active && ! ProductFilter::viewerIsAdmin(), 404);
+
         $product->load([
             'category',
             'brand',

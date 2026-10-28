@@ -25,6 +25,7 @@ class OrderService
         return $user->orders()
             ->with([
                 'items.productVariant',
+                'payment',
             ])
             ->latest()
             ->get();
@@ -50,6 +51,7 @@ class OrderService
 
         return $order->load([
             'items.productVariant',
+            'payment',
         ]);
     }
 
@@ -58,23 +60,35 @@ class OrderService
      */
     public function createOrder(User $user, array $data): Order
     {
-        $cart = $user->cart()
-            ->with([
+        return DB::transaction(function () use ($user, $data) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Lock the cart
+            |--------------------------------------------------------------------------
+            |
+            | Concurrent checkouts of the same cart (double submit, two tabs) wait
+            | here one after another; the later ones then find the cart emptied.
+            |
+            */
+
+            $cart = $user->cart()
+                ->lockForUpdate()
+                ->first();
+
+            $cart?->load([
                 'items.productVariant.product',
-            ])
-            ->first();
-
-        if (! $cart || $cart->items->isEmpty()) {
-
-            throw ValidationException::withMessages([
-                'cart' => [
-                    'Your cart is empty.',
-                ],
             ]);
 
-        }
+            if (! $cart || $cart->items->isEmpty()) {
 
-        return DB::transaction(function () use ($user, $cart, $data) {
+                throw ValidationException::withMessages([
+                    'cart' => [
+                        'Your cart is empty.',
+                    ],
+                ]);
+
+            }
 
             $subtotal = 0;
 
@@ -88,7 +102,7 @@ class OrderService
 
                 $variant = $item->productVariant;
 
-                if (! $variant->is_active) {
+                if (! $variant->is_active || ! $variant->product?->is_active) {
 
                     throw ValidationException::withMessages([
                         'cart' => [
